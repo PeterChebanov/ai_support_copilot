@@ -9,6 +9,5 @@ __pycache__/
 .mypy_cache/
 dist/
 build/
-eval/baseline.json
 .DS_Store
 *.log
