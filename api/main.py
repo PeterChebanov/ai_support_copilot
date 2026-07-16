@@ -19,7 +19,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="AI Support Copilot",
     description="Local RAG support knowledge assistant",
-    version="0.10.0",
+    version="1.0.0",
     lifespan=lifespan,
 )
 

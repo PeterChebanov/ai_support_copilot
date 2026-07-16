@@ -1,10 +1,10 @@
 {
-  "created_at": "2026-07-16T19:27:06.182663+00:00",
+  "created_at": "2026-07-16T19:57:01.397073+00:00",
   "num_samples": 25,
   "metrics": {
-    "faithfulness": 0.86,
-    "answer_relevancy": 0.5572,
-    "context_precision": 0.736,
-    "context_recall": 0.92
+    "faithfulness": 0.82,
+    "answer_relevancy": 0.5038,
+    "context_precision": 0.72,
+    "context_recall": 0.84
   }
 }
