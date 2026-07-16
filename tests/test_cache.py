@@ -1,6 +1,3 @@
-import json
-from unittest.mock import MagicMock
-
 import pytest
 
 from api.models import AskResponse, Citation
@@ -132,7 +129,9 @@ def test_cached_ask_exact_then_semantic():
             lambda emb, r, **k: set_semantic(emb, r, settings=cfg, redis_client=fake),
         )
 
-        embed = lambda texts, settings=None: [[1.0, 0.0, 0.0]]
+        def embed(texts, settings=None):
+            return [[1.0, 0.0, 0.0]]
+
         miss, meta_miss = cached_ask("refund policy", ask_fn, settings=cfg, embed_fn=embed)
         hit, meta_hit = cached_ask("refund policy", ask_fn, settings=cfg, embed_fn=embed)
 

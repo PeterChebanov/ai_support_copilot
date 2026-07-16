@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     cache_ttl_seconds: int = 3600
     semantic_cache_threshold: float = 0.92
     semantic_cache_max_entries: int = 1000
+    log_level: str = "info"
 
 
 settings = Settings()
