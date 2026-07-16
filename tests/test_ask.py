@@ -123,6 +123,7 @@ def test_ask_endpoint():
     import pytest
 
     from api.main import app
+    from cache.middleware import CacheMeta
 
     chunk = _chunk()
     mock_retrieved = MagicMock()
@@ -142,6 +143,13 @@ def test_ask_endpoint():
     with pytest.MonkeyPatch.context() as mp:
         mp.setattr("api.routes.ask.retrieve", lambda *a, **k: mock_retrieved)
         mp.setattr("api.routes.ask.generate_answer", lambda *a, **k: mock_generated)
+        mp.setattr(
+            "api.routes.ask.cached_ask",
+            lambda q, fn, **k: (
+                fn(q),
+                CacheMeta(cache="MISS", latency_ms=1.0),
+            ),
+        )
         client = TestClient(app)
         response = client.post(
             "/ask",
@@ -154,3 +162,4 @@ def test_ask_endpoint():
     assert "30 days" in body["answer"]
     assert body["citations"][0]["source"] == "policies.md"
     assert "30 days" in body["citations"][0]["quote"]
+    assert response.headers["X-Cache"] == "MISS"

@@ -43,6 +43,7 @@ def test_ingest_text_with_mocked_embed_and_store(monkeypatch):
 
     monkeypatch.setattr("ingestion.pipeline.run_migrations", lambda _url: None)
     monkeypatch.setattr("ingestion.pipeline.save_chunks", mock_save)
+    monkeypatch.setattr("ingestion.pipeline.invalidate_cache", lambda **k: 0)
 
     cfg = Settings(
         openai_api_key="test-key",

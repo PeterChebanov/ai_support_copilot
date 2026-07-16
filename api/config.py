@@ -14,6 +14,9 @@ class Settings(BaseSettings):
     retrieve_top_k: int = 5
     retrieve_candidate_limit: int = 20
     rrf_k: int = 60
+    cache_ttl_seconds: int = 3600
+    semantic_cache_threshold: float = 0.92
+    semantic_cache_max_entries: int = 1000
 
 
 settings = Settings()

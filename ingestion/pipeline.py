@@ -3,6 +3,7 @@ from pathlib import Path
 import uuid
 
 from api.config import Settings, settings as default_settings
+from cache.invalidate import invalidate_cache
 from db.session import run_migrations
 from ingestion.chunker import chunk_text
 from ingestion.embedder import embed_texts
@@ -44,6 +45,7 @@ def ingest_text(
         chunk.embedding = embedding
 
     count = save_chunks(chunks, database_url=cfg.database_url)
+    invalidate_cache(settings=cfg)
     return IngestResult(doc_id=doc_id, source=source, chunk_count=count)
 
 
