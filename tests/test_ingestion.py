@@ -64,6 +64,36 @@ def test_ingest_text_with_mocked_embed_and_store(monkeypatch):
     assert all(c.embedding is not None for c in saved_chunks)
 
 
+def test_ingest_text_persists_custom_allowed_roles(monkeypatch):
+    saved_chunks = []
+
+    def mock_embed(texts, *, settings=None, client=None):
+        return [[0.01] * 1536 for _ in texts]
+
+    def mock_save(chunks, *, database_url):
+        saved_chunks.extend(chunks)
+        return len(chunks)
+
+    monkeypatch.setattr("ingestion.pipeline.run_migrations", lambda _url: None)
+    monkeypatch.setattr("ingestion.pipeline.save_chunks", mock_save)
+    monkeypatch.setattr("ingestion.pipeline.invalidate_cache", lambda **k: 0)
+
+    cfg = Settings(
+        openai_api_key="test-key",
+        database_url="postgresql://copilot:copilot@localhost:5433/copilot",
+    )
+    result = ingest_text(
+        "Admin salary policy.",
+        source="internal-admin.md",
+        allowed_roles=["admin"],
+        settings=cfg,
+        embed_fn=mock_embed,
+    )
+
+    assert result.chunk_count == len(saved_chunks)
+    assert all(c.metadata["allowed_roles"] == ["admin"] for c in saved_chunks)
+
+
 def test_ingest_endpoint_accepts_upload():
     from fastapi.testclient import TestClient
 

@@ -79,9 +79,9 @@ def test_exact_cache_hit(fake_redis: FakeRedis):
 
     cfg = Settings(openai_api_key="test", redis_url="redis://localhost:6379/0")
     response = _sample_response()
-    set_exact("refund policy", response, settings=cfg, redis_client=fake_redis)  # type: ignore[arg-type]
+    set_exact("refund policy", response, user_role="support", settings=cfg, redis_client=fake_redis)  # type: ignore[arg-type]
 
-    hit = get_exact("refund policy", settings=cfg, redis_client=fake_redis)  # type: ignore[arg-type]
+    hit = get_exact("refund policy", user_role="support", settings=cfg, redis_client=fake_redis)  # type: ignore[arg-type]
     assert hit is not None
     assert hit.answer == response.answer
 
@@ -97,9 +97,9 @@ def test_semantic_cache_hit_on_similar_embedding(fake_redis: FakeRedis):
     response = _sample_response("What is your refund policy?")
     base = [1.0, 0.0, 0.0]
     near = [0.999, 0.001, 0.0]
-    set_semantic(base, response, settings=cfg, redis_client=fake_redis)  # type: ignore[arg-type]
+    set_semantic(base, response, user_role="support", settings=cfg, redis_client=fake_redis)  # type: ignore[arg-type]
 
-    hit = get_semantic(near, settings=cfg, redis_client=fake_redis)  # type: ignore[arg-type]
+    hit = get_semantic(near, user_role="support", settings=cfg, redis_client=fake_redis)  # type: ignore[arg-type]
     assert hit is not None
     assert hit.answer == response.answer
 
@@ -118,22 +118,40 @@ def test_cached_ask_exact_then_semantic():
     with pytest.MonkeyPatch.context() as mp:
         mp.setattr("cache.exact.redis.from_url", lambda *a, **k: fake)
         mp.setattr("cache.semantic.redis.from_url", lambda *a, **k: fake)
-        mp.setattr("cache.middleware.get_exact", lambda q, **k: get_exact(q, settings=cfg, redis_client=fake))
-        mp.setattr("cache.middleware.set_exact", lambda q, r, **k: set_exact(q, r, settings=cfg, redis_client=fake))
+        mp.setattr(
+            "cache.middleware.get_exact",
+            lambda q, user_role="support", **k: get_exact(
+                q, user_role=user_role, settings=cfg, redis_client=fake
+            ),
+        )
+        mp.setattr(
+            "cache.middleware.set_exact",
+            lambda q, r, user_role="support", **k: set_exact(
+                q, r, user_role=user_role, settings=cfg, redis_client=fake
+            ),
+        )
         mp.setattr(
             "cache.middleware.get_semantic",
-            lambda emb, **k: get_semantic(emb, settings=cfg, redis_client=fake),
+            lambda emb, user_role="support", **k: get_semantic(
+                emb, user_role=user_role, settings=cfg, redis_client=fake
+            ),
         )
         mp.setattr(
             "cache.middleware.set_semantic",
-            lambda emb, r, **k: set_semantic(emb, r, settings=cfg, redis_client=fake),
+            lambda emb, r, user_role="support", **k: set_semantic(
+                emb, r, user_role=user_role, settings=cfg, redis_client=fake
+            ),
         )
 
         def embed(texts, settings=None):
             return [[1.0, 0.0, 0.0]]
 
-        miss, meta_miss = cached_ask("refund policy", ask_fn, settings=cfg, embed_fn=embed)
-        hit, meta_hit = cached_ask("refund policy", ask_fn, settings=cfg, embed_fn=embed)
+        miss, meta_miss = cached_ask(
+            "refund policy", ask_fn, user_role="support", settings=cfg, embed_fn=embed
+        )
+        hit, meta_hit = cached_ask(
+            "refund policy", ask_fn, user_role="support", settings=cfg, embed_fn=embed
+        )
 
     assert calls["count"] == 1
     assert meta_miss.cache == "MISS"
@@ -146,12 +164,12 @@ def test_invalidate_cache_clears_keys(fake_redis: FakeRedis):
     from api.config import Settings
 
     cfg = Settings(openai_api_key="test", redis_url="redis://localhost:6379/0")
-    set_exact("q", _sample_response(), settings=cfg, redis_client=fake_redis)  # type: ignore[arg-type]
+    set_exact("q", _sample_response(), user_role="support", settings=cfg, redis_client=fake_redis)  # type: ignore[arg-type]
     fake_redis.store["cache:semantic:dummy"] = "x"
 
     deleted = invalidate_cache(settings=cfg, redis_client=fake_redis)  # type: ignore[arg-type]
     assert deleted >= 1
-    assert get_exact("q", settings=cfg, redis_client=fake_redis) is None  # type: ignore[arg-type]
+    assert get_exact("q", user_role="support", settings=cfg, redis_client=fake_redis) is None  # type: ignore[arg-type]
 
 
 def test_ask_endpoint_returns_cache_headers():
@@ -177,3 +195,34 @@ def test_ask_endpoint_returns_cache_headers():
     assert response.headers["X-Cache"] == "HIT"
     assert response.headers["X-Cache-Type"] == "semantic"
     assert response.headers["X-Tokens-Saved"] == "800"
+
+
+def test_cache_is_scoped_by_user_role(fake_redis: FakeRedis):
+    from api.config import Settings
+
+    cfg = Settings(openai_api_key="test", redis_url="redis://localhost:6379/0")
+    response = _sample_response("admin salary policy")
+
+    set_exact(
+        "admin salary policy",
+        response,
+        user_role="admin",
+        settings=cfg,
+        redis_client=fake_redis,
+    )  # type: ignore[arg-type]
+
+    admin_hit = get_exact(
+        "admin salary policy",
+        user_role="admin",
+        settings=cfg,
+        redis_client=fake_redis,
+    )  # type: ignore[arg-type]
+    support_hit = get_exact(
+        "admin salary policy",
+        user_role="support",
+        settings=cfg,
+        redis_client=fake_redis,
+    )  # type: ignore[arg-type]
+
+    assert admin_hit is not None
+    assert support_hit is None

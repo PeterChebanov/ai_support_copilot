@@ -24,6 +24,7 @@ def _cosine_similarity(a: list[float], b: list[float]) -> float:
 def get_semantic(
     embedding: list[float],
     *,
+    user_role: str = "support",
     settings: Settings | None = None,
     redis_client: redis.Redis | None = None,
 ) -> AskResponse | None:
@@ -38,6 +39,8 @@ def get_semantic(
             client.lrem(SEMANTIC_INDEX_KEY, 0, key)
             continue
         payload = json.loads(raw)
+        if payload.get("user_role", "support") != user_role.strip().lower():
+            continue
         score = _cosine_similarity(embedding, payload["embedding"])
         if score > best_score:
             best_score = score
@@ -52,13 +55,20 @@ def set_semantic(
     embedding: list[float],
     response: AskResponse,
     *,
+    user_role: str = "support",
     settings: Settings | None = None,
     redis_client: redis.Redis | None = None,
 ) -> None:
     cfg = settings or default_settings
     client = redis_client or redis.from_url(cfg.redis_url, decode_responses=True)
     key = f"cache:semantic:{uuid.uuid4().hex}"
-    payload = json.dumps({"embedding": embedding, "response": response.model_dump()})
+    payload = json.dumps(
+        {
+            "embedding": embedding,
+            "response": response.model_dump(),
+            "user_role": user_role.strip().lower(),
+        }
+    )
     client.set(key, payload, ex=cfg.cache_ttl_seconds)
     client.rpush(SEMANTIC_INDEX_KEY, key)
 

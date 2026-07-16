@@ -19,7 +19,7 @@ def retrieve_chunks(
     if blocked is not None:
         return blocked
 
-    result = retrieve(body.query, top_k=body.top_k, settings=settings)
+    result = retrieve(body.query, top_k=body.top_k, user_role=body.user_role, settings=settings)
     return RetrieveResponse(
         query=result.query,
         chunks=[

@@ -154,7 +154,7 @@ def test_ask_endpoint():
         client = TestClient(app)
         response = client.post(
             "/ask",
-            json={"query": "What is the refund policy?"},
+            json={"query": "What is the refund policy?", "user_role": "support"},
         )
 
     assert response.status_code == 200
@@ -230,3 +230,42 @@ def test_ask_endpoint_rejects_empty_citations_for_grounded_answer():
     body = response.json()
     assert body["answer"] != NO_INFO_ANSWER
     assert len(body["citations"]) >= 1
+
+
+def test_ask_endpoint_passes_user_role_to_retrieve_and_cache():
+    from fastapi.testclient import TestClient
+
+    import pytest
+
+    from api.main import app
+    from cache.middleware import CacheMeta
+
+    seen: dict[str, str] = {}
+    chunk = _chunk()
+    mock_generated = MagicMock()
+    mock_generated.query = "admin salary policy"
+    mock_generated.answer = "No relevant information."
+    mock_generated.citations = []
+
+    with pytest.MonkeyPatch.context() as mp:
+        def fake_retrieve(query, *, user_role="support", **kwargs):
+            seen["retrieve_role"] = user_role
+            result = MagicMock()
+            result.chunks = [chunk]
+            return result
+
+        def fake_cached_ask(query, fn, *, user_role="support", **kwargs):
+            seen["cache_role"] = user_role
+            return fn(query), CacheMeta(cache="MISS", latency_ms=1.0)
+
+        mp.setattr("api.routes.ask.retrieve", fake_retrieve)
+        mp.setattr("api.routes.ask.generate_answer", lambda *a, **k: mock_generated)
+        mp.setattr("api.routes.ask.cached_ask", fake_cached_ask)
+        client = TestClient(app)
+        response = client.post(
+            "/ask",
+            json={"query": "admin salary policy", "user_role": "admin"},
+        )
+
+    assert response.status_code == 200
+    assert seen == {"cache_role": "admin", "retrieve_role": "admin"}

@@ -12,8 +12,8 @@ from security.guard import enforce_or_block
 router = APIRouter(tags=["ask"])
 
 
-def _run_ask(query: str, settings: Settings) -> AskResponse:
-    retrieved = retrieve(query, settings=settings)
+def _run_ask(query: str, user_role: str, settings: Settings) -> AskResponse:
+    retrieved = retrieve(query, user_role=user_role, settings=settings)
     generated = generate_answer(query, retrieved.chunks, settings=settings)
     return AskResponse(
         query=generated.query,
@@ -40,7 +40,8 @@ def ask_question(
 
     response, meta = cached_ask(
         body.query,
-        lambda query: _run_ask(query, settings),
+        lambda query: _run_ask(query, body.user_role, settings),
+        user_role=body.user_role,
         settings=settings,
     )
     headers = {

@@ -25,6 +25,7 @@ def cached_ask(
     query: str,
     ask_fn: Callable[[str], AskResponse],
     *,
+    user_role: str = "support",
     settings: Settings | None = None,
     embed_fn=embed_texts,
     estimated_tokens_per_ask: int = 800,
@@ -32,7 +33,7 @@ def cached_ask(
     cfg = settings or default_settings
     started = time.perf_counter()
 
-    exact_hit = get_exact(query, settings=cfg)
+    exact_hit = get_exact(query, user_role=user_role, settings=cfg)
     if exact_hit is not None:
         elapsed = (time.perf_counter() - started) * 1000
         return _with_query(exact_hit, query), CacheMeta(
@@ -45,11 +46,11 @@ def cached_ask(
     embeddings = embed_fn([query], settings=cfg)
     query_embedding = embeddings[0] if embeddings else []
     if query_embedding:
-        semantic_hit = get_semantic(query_embedding, settings=cfg)
+        semantic_hit = get_semantic(query_embedding, user_role=user_role, settings=cfg)
         if semantic_hit is not None:
             elapsed = (time.perf_counter() - started) * 1000
             response = _with_query(semantic_hit, query)
-            set_exact(query, response, settings=cfg)
+            set_exact(query, response, user_role=user_role, settings=cfg)
             return response, CacheMeta(
                 cache="HIT",
                 cache_type="semantic",
@@ -58,9 +59,9 @@ def cached_ask(
             )
 
     response = ask_fn(query)
-    set_exact(query, response, settings=cfg)
+    set_exact(query, response, user_role=user_role, settings=cfg)
     if query_embedding:
-        set_semantic(query_embedding, response, settings=cfg)
+        set_semantic(query_embedding, response, user_role=user_role, settings=cfg)
 
     elapsed = (time.perf_counter() - started) * 1000
     return response, CacheMeta(cache="MISS", latency_ms=elapsed, tokens_saved=0)
