@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from api.config import settings
+from api.routes.ask import router as ask_router
 from api.routes.health import router as health_router
 from api.routes.ingest import router as ingest_router
 from api.routes.retrieve import router as retrieve_router
@@ -18,10 +19,11 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="AI Support Copilot",
     description="Local RAG support knowledge assistant",
-    version="0.3.0",
+    version="0.4.0",
     lifespan=lifespan,
 )
 
 app.include_router(health_router)
 app.include_router(ingest_router)
 app.include_router(retrieve_router)
+app.include_router(ask_router)

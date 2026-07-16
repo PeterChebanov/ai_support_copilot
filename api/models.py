@@ -25,3 +25,19 @@ class RetrievedChunk(BaseModel):
 class RetrieveResponse(BaseModel):
     query: str
     chunks: list[RetrievedChunk]
+
+
+class AskRequest(BaseModel):
+    query: str = Field(min_length=1, description="Support question to answer")
+
+
+class Citation(BaseModel):
+    chunk_id: str
+    source: str
+    quote: str = Field(description="Exact substring from the cited chunk text")
+
+
+class AskResponse(BaseModel):
+    query: str
+    answer: str
+    citations: list[Citation] = Field(default_factory=list)
