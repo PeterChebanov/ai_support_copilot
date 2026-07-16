@@ -11,6 +11,8 @@ ENV UV_COMPILE_BYTECODE=1 \
 
 COPY pyproject.toml uv.lock README.md ./
 COPY api ./api
+COPY db ./db
+COPY data ./data
 COPY ingestion ./ingestion
 COPY retrieval ./retrieval
 COPY generation ./generation
