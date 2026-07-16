@@ -7,6 +7,7 @@ from api.models import AskRequest, AskResponse, Citation
 from cache.middleware import cached_ask
 from generation.generator import generate_answer
 from retrieval.pipeline import retrieve
+from security.guard import enforce_or_block
 
 router = APIRouter(tags=["ask"])
 
@@ -33,6 +34,10 @@ def ask_question(
     body: AskRequest,
     settings: Settings = Depends(get_settings),
 ) -> JSONResponse:
+    blocked = enforce_or_block(body.query)
+    if blocked is not None:
+        return blocked
+
     response, meta = cached_ask(
         body.query,
         lambda query: _run_ask(query, settings),

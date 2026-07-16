@@ -30,6 +30,7 @@ def test_build_messages_includes_chunk_ids():
     user = messages[1]["content"]
     assert "chunk_id=c1" in user
     assert "30 days" in user
+    assert "<user_query>" in user
     assert "What is the refund policy?" in user
 
 
