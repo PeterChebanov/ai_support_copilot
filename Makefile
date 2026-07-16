@@ -1,4 +1,4 @@
-.PHONY: up down test ingest-sample ask ready health eval-ragas
+.PHONY: up down test ingest-sample ask ready health eval-ragas eval-regression
 
 up:
 	docker compose up -d --build --wait
@@ -26,3 +26,6 @@ health:
 
 eval-ragas:
 	uv run python -m eval.ragas_run
+
+eval-regression:
+	uv run python -m eval.regression

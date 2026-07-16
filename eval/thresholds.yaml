@@ -1,0 +1,8 @@
+# Minimum acceptable scores for the committed RAGAS baseline (eval/baseline.json).
+# Tuned to the EP07 golden mix (includes negative / "no info" cases that
+# lower answer_relevancy). Override any key via REGRESSION_MIN_<METRIC>.
+faithfulness: 0.80
+answer_relevancy: 0.50
+context_precision: 0.70
+context_recall: 0.80
+citation_required: true

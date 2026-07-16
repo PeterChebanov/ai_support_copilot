@@ -163,3 +163,69 @@ def test_ask_endpoint():
     assert body["citations"][0]["source"] == "policies.md"
     assert "30 days" in body["citations"][0]["quote"]
     assert response.headers["X-Cache"] == "MISS"
+
+
+def test_citation_required_when_answer_is_grounded():
+    """Hallucination guard: non-no-info answers must carry ≥1 citation."""
+    from generation.prompt import NO_INFO_ANSWER
+
+    grounded = {
+        "answer": "Refunds are available within 30 days.",
+        "citations": [
+            {
+                "chunk_id": "c1",
+                "source": "policies.md",
+                "quote": "full refund within **30 days**",
+            }
+        ],
+    }
+    assert grounded["answer"] != NO_INFO_ANSWER
+    assert len(grounded["citations"]) >= 1
+
+    no_info = {"answer": NO_INFO_ANSWER, "citations": []}
+    assert no_info["answer"] == NO_INFO_ANSWER
+    assert no_info["citations"] == []
+
+
+def test_ask_endpoint_rejects_empty_citations_for_grounded_answer():
+    """Contract: /ask with a factual answer must return at least one citation."""
+    from fastapi.testclient import TestClient
+
+    import pytest
+
+    from api.main import app
+    from cache.middleware import CacheMeta
+    from generation.prompt import NO_INFO_ANSWER
+
+    chunk = _chunk()
+    mock_retrieved = MagicMock()
+    mock_retrieved.chunks = [chunk]
+
+    mock_generated = MagicMock()
+    mock_generated.query = "What is the refund policy?"
+    mock_generated.answer = "Refunds are available within 30 days."
+    mock_generated.citations = [
+        RawCitation(
+            chunk_id="c1",
+            source="policies.md",
+            quote="full refund within **30 days**",
+        )
+    ]
+
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr("api.routes.ask.retrieve", lambda *a, **k: mock_retrieved)
+        mp.setattr("api.routes.ask.generate_answer", lambda *a, **k: mock_generated)
+        mp.setattr(
+            "api.routes.ask.cached_ask",
+            lambda q, fn, **k: (
+                fn(q),
+                CacheMeta(cache="MISS", latency_ms=1.0),
+            ),
+        )
+        client = TestClient(app)
+        response = client.post("/ask", json={"query": "What is the refund policy?"})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["answer"] != NO_INFO_ANSWER
+    assert len(body["citations"]) >= 1
