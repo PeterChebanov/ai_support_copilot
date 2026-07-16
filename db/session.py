@@ -22,10 +22,11 @@ def get_session_factory(database_url: str) -> sessionmaker[Session]:
 
 
 def run_migrations(database_url: str) -> None:
-    migration = MIGRATIONS_DIR / "001_chunks.sql"
-    statements = [s.strip() for s in migration.read_text().split(";") if s.strip()]
+    migrations = sorted(MIGRATIONS_DIR.glob("*.sql"))
     with psycopg.connect(database_url) as conn:
         with conn.cursor() as cur:
-            for statement in statements:
-                cur.execute(statement)
+            for migration in migrations:
+                statements = [s.strip() for s in migration.read_text().split(";") if s.strip()]
+                for statement in statements:
+                    cur.execute(statement)
         conn.commit()

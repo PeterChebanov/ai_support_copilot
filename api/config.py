@@ -11,6 +11,9 @@ class Settings(BaseSettings):
     llm_model: str = "gpt-4o-mini"
     chunk_size: int = 512
     chunk_overlap: int = 64
+    retrieve_top_k: int = 5
+    retrieve_candidate_limit: int = 20
+    rrf_k: int = 60
 
 
 settings = Settings()
